@@ -16,6 +16,7 @@ import org.bigdatacenter.healthcarecdcdataextractor.util.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -23,8 +24,9 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class ExtractionRequestResolverImpl implements ExtractionRequestResolver {
-    private static final Logger logger = LoggerFactory.getLogger(ExtractionRequestResolverImpl.class);
+@Qualifier("extractionRequestResolverForGeneral")
+public class ExtractionRequestResolverImplForGeneral implements ExtractionRequestResolver {
+    private static final Logger logger = LoggerFactory.getLogger(ExtractionRequestResolverImplForGeneral.class);
     private static final String currentThreadName = Thread.currentThread().getName();
 
     private final SelectClauseBuilder selectClauseBuilder;
@@ -34,9 +36,9 @@ public class ExtractionRequestResolverImpl implements ExtractionRequestResolver 
     private final ExtractionRequestParameterResolver extractionRequestParameterResolver;
 
     @Autowired
-    public ExtractionRequestResolverImpl(SelectClauseBuilder selectClauseBuilder,
-                                         WhereClauseBuilder whereClauseBuilder,
-                                         ExtractionRequestParameterResolver extractionRequestParameterResolver)
+    public ExtractionRequestResolverImplForGeneral(SelectClauseBuilder selectClauseBuilder,
+                                                   WhereClauseBuilder whereClauseBuilder,
+                                                   ExtractionRequestParameterResolver extractionRequestParameterResolver)
     {
         this.selectClauseBuilder = selectClauseBuilder;
         this.whereClauseBuilder = whereClauseBuilder;
