@@ -54,7 +54,6 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
 
     @Override
     public ExtractionRequest buildExtractionRequest(ExtractionParameter extractionParameter) {
-
         if (extractionParameter == null)
             throw new NullPointerException(String.format("%s - extractionParameter is null.", currentThreadName));
 
@@ -128,11 +127,19 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, joinQuery);
 
                     final String snpRs = requestInfo.getSnpRs();
-                    final Integer affy5MapNumber = requestInfo.getAffy5MapNumber();
-                    final String headerForExtraction = String.format("%s,%s_1,%s_2", header, snpRs, snpRs);
-                    final String extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, headerForExtraction, snpRs, affy5MapNumber);
+                    final String affy5MapNumber = requestInfo.getAffy5MapNumber();
 
-                    DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
+                    final String extractionQuery;
+                    final DataExtractionTask dataExtractionTask;
+
+                    if (snpRs == null || affy5MapNumber == null) {
+                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header, Boolean.FALSE);
+                        dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
+                    } else {
+                        final String headerForExtraction = getHeaderForExtraction(header, snpRs);
+                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, headerForExtraction, snpRs, affy5MapNumber);
+                        dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
+                    }
 
                     queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
                 }
@@ -142,5 +149,15 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
             e.printStackTrace();
             throw new RuntimeException(e.getMessage());
         }
+    }
+
+    private String getHeaderForExtraction(String header, String snpRs) {
+        final StringBuilder extractionHeaderBuilder = new StringBuilder(header);
+
+        String[] snpRsArray = snpRs.split("[,]");
+        for (String rs : snpRsArray)
+            extractionHeaderBuilder.append(String.format(",%s_1,%s_2", rs, rs));
+
+        return extractionHeaderBuilder.toString();
     }
 }
