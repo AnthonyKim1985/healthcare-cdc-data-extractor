@@ -153,8 +153,8 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
 
     private String getHeaderForExtraction(String header, String snpRs) {
         final StringBuilder extractionHeaderBuilder = new StringBuilder(header);
+        final String[] snpRsArray = snpRs.split("[,]");
 
-        String[] snpRsArray = snpRs.split("[,]");
         for (String rs : snpRsArray)
             extractionHeaderBuilder.append(String.format(",%s_1,%s_2", rs, rs));
 
