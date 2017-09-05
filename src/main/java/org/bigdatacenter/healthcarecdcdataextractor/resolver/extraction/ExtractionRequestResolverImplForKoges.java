@@ -81,15 +81,18 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     throw new RuntimeException(String.format("%s - Invalid parameter size: The koges dataset can only be filtered by epidata_merge. " +
                             "Please check the affy5_snp column information.", currentThreadName));
 
+                String sourceTableName = null;
+                String headerForEpidata = null;
                 JoinParameter sourceJoinParameter = null;
+
                 for (ParameterKey parameterKey : parameterKeySet) {
-                    final String tableName = parameterKey.getTableName();
-                    final String header = parameterKey.getHeader();
+                    sourceTableName = parameterKey.getTableName();
+                    headerForEpidata = parameterKey.getHeader();
 
                     //
                     // TODO: 1.1. 임시 테이블 생성을 위한 쿼리를 만든다.
                     //
-                    final String selectClause = selectClauseBuilder.buildClause(databaseName, tableName, header, Boolean.FALSE);
+                    final String selectClause = selectClauseBuilder.buildClause(databaseName, sourceTableName, headerForEpidata, Boolean.FALSE);
                     final String whereClause = whereClauseBuilder.buildClause(parameterMap.get(parameterKey));
                     final String creationQuery = String.format("%s %s", selectClause, whereClause);
                     logger.info(String.format("%s - query: %s", currentThreadName, creationQuery));
@@ -102,7 +105,7 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, creationQuery);
 
                     queryTaskList.add(new QueryTask(tableCreationTask, null));
-                    sourceJoinParameter = new JoinParameter(extrDbName, extrTableName, header, joinCondition);
+                    sourceJoinParameter = new JoinParameter(extrDbName, extrTableName, headerForEpidata, joinCondition);
                 }
 
                 //
@@ -116,9 +119,9 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                 JoinParameter targetJoinParameter;
                 for (AdjacentTableInfo adjacentTableInfo : adjacentTableInfoSet) {
                     final String tableName = adjacentTableInfo.getTableName();
-                    final String header = adjacentTableInfo.getHeader();
+                    final String headerForAdjacentTable = adjacentTableInfo.getHeader();
 
-                    targetJoinParameter = new JoinParameter(databaseName, tableName, header, "individual_id");
+                    targetJoinParameter = new JoinParameter(databaseName, tableName, headerForAdjacentTable, "individual_id");
 
                     final String joinQuery = joinClauseBuilder.buildClause(sourceJoinParameter, targetJoinParameter, Boolean.TRUE);
                     final String joinDbName = String.format("%s_join_%s_integrated", databaseName, joinCondition);
@@ -133,12 +136,11 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     final DataExtractionTask dataExtractionTask;
 
                     if (snpRs == null || affy5MapNumber == null) {
-                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, header, Boolean.FALSE);
-                        dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, header);
+                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, headerForEpidata, Boolean.FALSE);
+                        dataExtractionTask = new DataExtractionTask(sourceTableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForEpidata);
                     } else {
-                        final String headerForExtraction = getHeaderForExtraction(header, snpRs);
-                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, headerForExtraction, snpRs, affy5MapNumber);
-                        dataExtractionTask = new DataExtractionTask(tableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
+                        extractionQuery = selectClauseBuilder.buildClause(joinDbName, joinTableName, headerForEpidata, snpRs, affy5MapNumber);
+                        dataExtractionTask = new DataExtractionTask(sourceTableName/*Data File Name*/, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, getHeaderForExtraction(headerForEpidata, snpRs));
                     }
 
                     queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
