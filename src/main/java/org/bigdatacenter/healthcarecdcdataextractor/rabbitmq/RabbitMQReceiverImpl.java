@@ -50,10 +50,10 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
             return;
         }
 
-        final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
-        final Integer dataSetUID = requestInfo.getDataSetUID();
-
         if (checkExtractionRequestValidity(extractionRequest)) {
+            final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
+            final Integer dataSetUID = requestInfo.getDataSetUID();
+
             try {
                 final Long jobStartTime = System.currentTimeMillis();
                 dataIntegrationPlatformAPICaller.callUpdateJobStartTime(dataSetUID, jobStartTime);
@@ -80,7 +80,12 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
             }
         } else {
             try {
-                dataIntegrationPlatformAPICaller.callUpdateProcessState(dataSetUID, DataIntegrationPlatformAPICaller.PROCESS_STATE_CODE_REJECTED);
+                final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
+                if (requestInfo != null) {
+                    final Integer dataSetUID = requestInfo.getDataSetUID();
+                    if (dataSetUID != null)
+                        dataIntegrationPlatformAPICaller.callUpdateProcessState(dataSetUID, DataIntegrationPlatformAPICaller.PROCESS_STATE_CODE_REJECTED);
+                }
                 rabbitAdmin.purgeQueue(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, true);
                 logger.error(String.format("%s - The extraction request has been purged in queue. (%s)", currentThreadName, extractionRequest));
             } catch (Exception e) {
