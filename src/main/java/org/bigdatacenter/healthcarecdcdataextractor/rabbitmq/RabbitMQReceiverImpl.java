@@ -45,10 +45,15 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
 
     @Override
     public void runReceiver(ExtractionRequest extractionRequest) {
-        if (checkExtractionRequestValidity(extractionRequest)) {
-            final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
-            final Integer dataSetUID = requestInfo.getDataSetUID();
+        if (extractionRequest == null) {
+            logger.error(String.format("%s - Error occurs at RabbitMQReceiver: extraction request is null", currentThreadName));
+            return;
+        }
 
+        final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
+        final Integer dataSetUID = requestInfo.getDataSetUID();
+
+        if (checkExtractionRequestValidity(extractionRequest)) {
             try {
                 final Long jobStartTime = System.currentTimeMillis();
                 dataIntegrationPlatformAPICaller.callUpdateJobStartTime(dataSetUID, jobStartTime);
@@ -75,6 +80,7 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
             }
         } else {
             try {
+                dataIntegrationPlatformAPICaller.callUpdateProcessState(dataSetUID, DataIntegrationPlatformAPICaller.PROCESS_STATE_CODE_REJECTED);
                 rabbitAdmin.purgeQueue(RabbitMQConfig.EXTRACTION_REQUEST_QUEUE, true);
                 logger.error(String.format("%s - The extraction request has been purged in queue. (%s)", currentThreadName, extractionRequest));
             } catch (Exception e) {
@@ -85,8 +91,19 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
 
     private Boolean checkExtractionRequestValidity(ExtractionRequest extractionRequest) {
         Boolean isValid = Boolean.TRUE;
-        if (extractionRequest == null) {
-            logger.error(String.format("%s - Error occurs at RabbitMQReceiver: extraction request is null", currentThreadName));
+
+        final String databaseName = extractionRequest.getDatabaseName();
+        final List<QueryTask> queryTaskList = extractionRequest.getQueryTaskList();
+        final TrRequestInfo requestInfo = extractionRequest.getRequestInfo();
+
+        if (databaseName ==  null) {
+            logger.error(String.format("%s - Error occurs at RabbitMQReceiver: databaseName is null.", currentThreadName));
+            isValid = Boolean.FALSE;
+        } else if (requestInfo == null) {
+            logger.error(String.format("%s - Error occurs at RabbitMQReceiver: requestInfo is null.", currentThreadName));
+            isValid = Boolean.FALSE;
+        } else if (queryTaskList == null || queryTaskList.isEmpty()) {
+            logger.error(String.format("%s - Error occurs at RabbitMQReceiver: queryTaskList is either null or empty.", currentThreadName));
             isValid = Boolean.FALSE;
         } else if (extractionRequest.getQueryTaskList().size() == 0) {
             logger.error(String.format("%s - Error occurs at RabbitMQReceiver: There are no tasks to process.", currentThreadName));
