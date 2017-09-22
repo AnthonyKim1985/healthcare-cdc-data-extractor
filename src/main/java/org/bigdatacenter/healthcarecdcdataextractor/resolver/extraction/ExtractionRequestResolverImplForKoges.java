@@ -164,7 +164,16 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
             extractionQuery = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
             dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForEpidata);
         } else {
-            rsQuery = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
+            //
+            // TODO: Exclude rows, if the value of edate is '55555'
+            //
+            List<ParameterValue> parameterValueList = new ArrayList<>();
+            parameterValueList.add(new ParameterValue(1, String.format("a0%d_edate", year), "55555", "<>"));
+
+            final String selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
+            final String whereClause = whereClauseBuilder.buildClause(parameterValueList);
+            rsQuery = String.format("%s %s", selectClause, whereClause);
+
             rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
             dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
             tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
