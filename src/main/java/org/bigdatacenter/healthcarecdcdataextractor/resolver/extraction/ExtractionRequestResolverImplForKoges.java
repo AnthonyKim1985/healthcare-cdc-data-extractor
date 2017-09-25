@@ -147,40 +147,54 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
         final String rsDbName = "koges_rs_extracted";
         final String dataFileName = String.format("koges_ans_%s", year);
 
-        final String rsQuery;
-        final String rsTableName;
-        final String dbAndHashedTableName;
+        //
+        // TODO: Exclude rows, if the value of edate is '55555'
+        //
+        final List<ParameterValue> parameterValueList = new ArrayList<>();
+        parameterValueList.add(new ParameterValue(1, String.format("a0%d_edate", year), "55555", "<>"));
 
-        final String extractionQuery;
-        final TableCreationTask tableCreationTask;
-        final DataExtractionTask dataExtractionTask;
+//        if (snpRs == null || affy5MapNumber == null) {
+//            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
+//            rsQuery = String.format("%s %s", selectClause, whereClause);
+//
+//            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
+//            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
+//            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
+//
+//            extractionQuery = selectClauseBuilder.buildClause(rsDbName, rsTableName, headerForEpidata, Boolean.FALSE);
+//            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForEpidata);
+//        } else {
+//            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
+//            rsQuery = String.format("%s %s", selectClause, whereClause);
+//
+//            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
+//            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
+//            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
+//
+//            final String headerForExtraction = getHeaderForExtraction(headerForEpidata, snpRs);
+//            extractionQuery = selectClauseBuilder.buildClause(rsDbName, rsTableName, headerForExtraction, Boolean.FALSE);
+//            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
+//        }
+
+
+        final String selectClause;
+        final String headerForExtraction;
 
         if (snpRs == null || affy5MapNumber == null) {
-            rsQuery = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
-            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
-            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
-            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
-
-            extractionQuery = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
-            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForEpidata);
+            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
+            headerForExtraction = headerForEpidata;
         } else {
-            //
-            // TODO: Exclude rows, if the value of edate is '55555'
-            //
-            List<ParameterValue> parameterValueList = new ArrayList<>();
-            parameterValueList.add(new ParameterValue(1, String.format("a0%d_edate", year), "55555", "<>"));
-
-            final String selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
-            final String whereClause = whereClauseBuilder.buildClause(parameterValueList);
-            rsQuery = String.format("%s %s", selectClause, whereClause);
-
-            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
-            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
-            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
-
-            extractionQuery = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
-            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, getHeaderForExtraction(headerForEpidata, snpRs));
+            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
+            headerForExtraction = getHeaderForExtraction(headerForEpidata, snpRs);
         }
+
+        final String rsQuery = String.format("%s %s", selectClause, whereClauseBuilder.buildClause(parameterValueList));
+        final String rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
+        final String dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
+        final TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
+
+        final String extractionQuery = selectClauseBuilder.buildClause(rsDbName, rsTableName, headerForExtraction, Boolean.FALSE);
+        final DataExtractionTask dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
 
         queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
 
