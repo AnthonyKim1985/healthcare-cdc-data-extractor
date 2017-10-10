@@ -146,27 +146,28 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                 if (dataExtractionTask != null) {
                     logger.info(String.format("%s - Start data extraction at Hive Query: %s", currentThreadName, dataExtractionTask.getQuery()));
 
+                    final String dataFileName = dataExtractionTask.getDataFileName();
+                    final String hdfsLocation = dataExtractionTask.getHdfsLocation();
+                    final String header = dataExtractionTask.getHeader();
+
                     //
                     // TODO: Call REST API For Statistic
                     //
                     try {
                         if (tableCreationTask != null) {
-                            String[] dbAndTableName = tableCreationTask.getDbAndHashedTableName().split("[.]");
-                            if (dbAndTableName[0].equals("koges"))
+                            if (dataFileName.startsWith("koges_ans_")) {
+                                String[] dbAndTableName = tableCreationTask.getDbAndHashedTableName().split("[.]");
                                 statisticAPICaller.callCreateStatistic(requestInfo.getDataSetUID(), dbAndTableName[0], dbAndTableName[1]);
+                            }
                         }
                     } catch (Exception e) {
                         logger.warn(String.format("%s - Exception occurs at Statistic API Caller: %s", currentThreadName, e.getMessage()));
                     }
-
                     rawDataDBService.extractData(dataExtractionTask);
 
                     //
                     // TODO: Merge Reducer output files in HDFS, download merged file to local file system.
                     //
-                    final String dataFileName = dataExtractionTask.getDataFileName();
-                    final String hdfsLocation = dataExtractionTask.getHdfsLocation();
-                    final String header = dataExtractionTask.getHeader();
                     shellScriptResolver.runReducePartsMerger(hdfsLocation, header, homePath, dataFileName, databaseName);
                 }
 
