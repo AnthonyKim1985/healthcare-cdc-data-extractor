@@ -48,7 +48,7 @@ public class ExtractionRequestResolverImplForGeneral implements ExtractionReques
     @Override
     public ExtractionRequest buildExtractionRequest(ExtractionParameter extractionParameter) {
         if (extractionParameter == null)
-            throw new NullPointerException(String.format("%s - extractionParameter is null.", currentThreadName));
+            throw new NullPointerException("The extractionParameter is null.");
 
         try {
             final TrRequestInfo requestInfo = extractionParameter.getRequestInfo();
@@ -75,31 +75,34 @@ public class ExtractionRequestResolverImplForGeneral implements ExtractionReques
                     //
                     final String selectClause = selectClauseBuilder.buildClause(databaseName, tableName, header, Boolean.FALSE);
                     final String whereClause = whereClauseBuilder.buildClause(parameterMap.get(parameterKey));
-                    final String creationQuery = String.format("%s %s", selectClause, whereClause);
-                    logger.info(String.format("%s - query: %s", currentThreadName, creationQuery));
+                    final String query = String.format("%s %s", selectClause, whereClause);
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - query: %s", dataSetUID, currentThreadName, query));
 
                     final String extrDbName = String.format("%s_extracted", databaseName);
-                    final String extrTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(creationQuery));
+                    final String extrTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(query));
                     final String dbAndHashedTableName = String.format("%s.%s", extrDbName, extrTableName);
-                    logger.info(String.format("%s - dbAndHashedTableName: %s", currentThreadName, dbAndHashedTableName));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - dbAndHashedTableName: %s", dataSetUID, currentThreadName, dbAndHashedTableName));
 
-                    TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, creationQuery);
+                    TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, query);
 
                     //
                     // TODO: 1.2. 데이터 추출을 위한 쿼리를 만든다.
                     //
                     final String hdfsLocation = CommonUtil.getHdfsLocation(String.format("%s.%s", databaseName, tableName), dataSetUID);
-                    logger.info(String.format("%s - hdfsLocation: %s", currentThreadName, hdfsLocation));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - hdfsLocation: %s", dataSetUID, currentThreadName, hdfsLocation));
 
                     final String extractionQuery = selectClauseBuilder.buildClause(extrDbName, extrTableName, header, Boolean.FALSE);
-                    logger.info(String.format("%s - extractionQuery: %s", currentThreadName, extractionQuery));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - extractionQuery: %s", dataSetUID, currentThreadName, extractionQuery));
 
                     DataExtractionTask dataExtractionTask = new DataExtractionTask(tableName, hdfsLocation, extractionQuery, header);
-
                     queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
                 }
             }
-            return new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+
+            final ExtractionRequest extractionRequest = new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+            logger.info(String.format("(dataSetUID=%d / threadName=%s) - ExtractionRequest: %s", dataSetUID, currentThreadName, extractionRequest));
+
+            return extractionRequest;
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getMessage());

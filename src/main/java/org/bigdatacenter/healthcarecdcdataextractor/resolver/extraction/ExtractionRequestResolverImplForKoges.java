@@ -55,10 +55,11 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
     @Override
     public ExtractionRequest buildExtractionRequest(ExtractionParameter extractionParameter) {
         if (extractionParameter == null)
-            throw new NullPointerException(String.format("%s - extractionParameter is null.", currentThreadName));
+            throw new NullPointerException("The extractionParameter is null.");
 
         try {
             final TrRequestInfo requestInfo = extractionParameter.getRequestInfo();
+            final Integer dataSetUID = requestInfo.getDataSetUID();
             final String databaseName = extractionParameter.getDatabaseName();
             final String joinCondition = requestInfo.getJoinCondition();
 
@@ -77,8 +78,8 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
 
                 Set<ParameterKey> parameterKeySet = parameterMap.keySet();
                 if (parameterKeySet.size() != 1)
-                    throw new RuntimeException(String.format("%s - Invalid parameter size: The koges dataset can only be filtered by epidata_merge. " +
-                            "Please check the affy5_snp column information.", currentThreadName));
+                    throw new RuntimeException("Invalid parameter size: The koges dataset can only be filtered by epidata_merge. \" +\n" +
+                            "                            \"Please check the affy5_snp column information.");
 
                 String headerForEpidata = null;
                 JoinParameter sourceJoinParameter = null;
@@ -91,15 +92,15 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     //
                     final String selectClause = selectClauseBuilder.buildClause(databaseName, parameterKey.getTableName(), headerForEpidata, Boolean.FALSE);
                     final String whereClause = whereClauseBuilder.buildClause(parameterMap.get(parameterKey));
-                    final String creationQuery = String.format("%s %s", selectClause, whereClause);
-                    logger.info(String.format("%s - query: %s", currentThreadName, creationQuery));
+                    final String query = String.format("%s %s", selectClause, whereClause);
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - query: %s", dataSetUID, currentThreadName, query));
 
                     final String extrDbName = String.format("%s_extracted", databaseName);
-                    final String extrTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(creationQuery));
+                    final String extrTableName = String.format("%s_%s", databaseName, CommonUtil.getHashedString(query));
                     final String dbAndHashedTableName = String.format("%s.%s", extrDbName, extrTableName);
-                    logger.info(String.format("%s - dbAndHashedTableName: %s", currentThreadName, dbAndHashedTableName));
+                    logger.debug(String.format("(dataSetUID=%d / threadName=%s) - dbAndHashedTableName: %s", dataSetUID, currentThreadName, dbAndHashedTableName));
 
-                    TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, creationQuery);
+                    TableCreationTask tableCreationTask = new TableCreationTask(dbAndHashedTableName, query);
 
                     queryTaskList.add(new QueryTask(tableCreationTask, null));
                     sourceJoinParameter = new JoinParameter(extrDbName, extrTableName, headerForEpidata, joinCondition);
@@ -110,8 +111,8 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                 //
                 Set<AdjacentTableInfo> adjacentTableInfoSet = yearAdjacentTableInfoMap.get(year);
                 if (adjacentTableInfoSet.size() != 1)
-                    throw new RuntimeException(String.format("%s - Invalid parameter size: The koges adjacent table dataset can only have one item. " +
-                            "Please check the exclusive adjacent table variable at integration platform.", currentThreadName));
+                    throw new RuntimeException("Invalid parameter size: The koges adjacent table dataset can only have one item. \" +\n" +
+                            "                            \"Please check the exclusive adjacent table variable at integration platform.");
 
                 JoinParameter targetJoinParameter;
                 for (AdjacentTableInfo adjacentTableInfo : adjacentTableInfoSet) {
@@ -130,7 +131,11 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
                     queryTaskList.addAll(getQueryTaskForRsTransformation(requestInfo, joinDbName, joinTableName, headerForEpidata, year));
                 }
             }
-            return new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+
+            final ExtractionRequest extractionRequest = new ExtractionRequest(databaseName, requestInfo, queryTaskList);
+            logger.info(String.format("(dataSetUID=%d / threadName=%s) - ExtractionRequest: %s", dataSetUID, currentThreadName, extractionRequest));
+
+            return extractionRequest;
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e.getMessage());
@@ -153,30 +158,6 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
         final List<ParameterValue> parameterValueList = new ArrayList<>();
         parameterValueList.add(new ParameterValue(1, String.format("a0%d_edate", year), "55555", "<>"));
 
-//        if (snpRs == null || affy5MapNumber == null) {
-//            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, Boolean.FALSE);
-//            rsQuery = String.format("%s %s", selectClause, whereClause);
-//
-//            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
-//            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
-//            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
-//
-//            extractionQuery = selectClauseBuilder.buildClause(rsDbName, rsTableName, headerForEpidata, Boolean.FALSE);
-//            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForEpidata);
-//        } else {
-//            selectClause = selectClauseBuilder.buildClause(snpDbName, snpTableName, headerForEpidata, snpRs, affy5MapNumber);
-//            rsQuery = String.format("%s %s", selectClause, whereClause);
-//
-//            rsTableName = String.format("%s_%s", rsDbName, CommonUtil.getHashedString(rsQuery));
-//            dbAndHashedTableName = String.format("%s.%s", rsDbName, rsTableName);
-//            tableCreationTask = new TableCreationTask(dbAndHashedTableName, rsQuery);
-//
-//            final String headerForExtraction = getHeaderForExtraction(headerForEpidata, snpRs);
-//            extractionQuery = selectClauseBuilder.buildClause(rsDbName, rsTableName, headerForExtraction, Boolean.FALSE);
-//            dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
-//        }
-
-
         final String selectClause;
         final String headerForExtraction;
 
@@ -197,6 +178,8 @@ public class ExtractionRequestResolverImplForKoges implements ExtractionRequestR
         final DataExtractionTask dataExtractionTask = new DataExtractionTask(dataFileName, CommonUtil.getHdfsLocation(dbAndHashedTableName, dataSetUID), extractionQuery, headerForExtraction);
 
         queryTaskList.add(new QueryTask(tableCreationTask, dataExtractionTask));
+
+        logger.info(String.format("(dataSetUID=%d / threadName=%s) - QueryTaskList For operation of RS-transformation: %s", dataSetUID, currentThreadName, queryTaskList));
 
         return queryTaskList;
     }
