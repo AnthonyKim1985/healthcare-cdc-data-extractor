@@ -174,8 +174,9 @@ public class RabbitMQReceiverImpl implements RabbitMQReceiver {
                     try {
                         if (tableCreationTask != null) {
                             if (dataFileName.startsWith("koges_ans_")) {
-                                String[] dbAndTableName = tableCreationTask.getDbAndHashedTableName().split("[.]");
-                                statisticAPICaller.callCreateStatistic(requestInfo.getDataSetUID(), dbAndTableName[0], dbAndTableName[1]);
+                                final String[] dbAndTableName = tableCreationTask.getDbAndHashedTableName().split("[.]");
+                                logger.info(String.format("(dataSetUID=%d / threadName=%s) - dataSetUID: %d, dbName: %s, tableName: %s", dataSetUID, currentThreadName, dataSetUID, dbAndTableName[0], dbAndTableName[1]));
+                                statisticAPICaller.callCreateStatistic(dataSetUID, dbAndTableName[0], dbAndTableName[1]);
                             }
                         }
                     } catch (Exception e) {
